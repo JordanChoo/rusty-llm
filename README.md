@@ -315,42 +315,26 @@ curl -s "https://<worker-url>/v1/health" | jq .
 
 ### Via Cloudflare Dashboard (UI)
 
-1. **Build the worker locally:**
+The `wrangler deploy` command handles building, uploading, and configuring the worker in one step. If you prefer deploying via the CLI, that's all you need — the steps below are only for configuring secrets and custom domains through the dashboard.
+
+1. **Deploy via CLI** (handles build + upload + compatibility automatically):
    ```bash
-   worker-build --release
+   npx wrangler deploy
    ```
-   This produces `build/worker/shim.mjs` and `build/worker/index_bg.wasm`.
 
-2. **Create the Worker:**
-   - Go to [Cloudflare Dashboard](https://dash.cloudflare.com) → **Workers & Pages** → **Create**
-   - Select **Create Worker**
-   - Name it `rusty-llm` (or `rusty-llm-staging` for staging)
-   - Click **Deploy** to create the placeholder, then **Edit Code**
-
-3. **Upload the built files:**
-   - In the online editor, delete the default `worker.js`
-   - Click **+** to add files and upload:
-     - `build/worker/shim.mjs` (rename to `index.mjs` or keep as-is and update the main entry)
-     - `build/worker/index_bg.wasm`
-   - Alternatively: go to **Settings** → **Build** → upload a zip of the `build/worker/` directory
-
-4. **Configure secrets:**
-   - Go to **Settings** → **Variables and Secrets**
-   - Click **Add** under **Secrets** for each:
+2. **Configure secrets in the dashboard:**
+   - Go to [Cloudflare Dashboard](https://dash.cloudflare.com) → **Workers & Pages** → **rusty-llm**
+   - Navigate to **Settings** → **Variables and Secrets**
+   - Add the following as **Encrypted** secrets:
      - `CSVKEY` — your chosen authentication token
      - `DATAFORSEO_LOGIN` — DataForSEO account email
      - `DATAFORSEO_PASSWORD` — DataForSEO API password
-   - Click **Encrypt** to confirm each secret
 
-5. **Set compatibility settings:**
-   - Go to **Settings** → **Runtime**
-   - Set **Compatibility date** to `2026-05-03` (or later)
-
-6. **Configure custom domain (optional):**
+3. **Configure custom domain (optional):**
    - Go to **Settings** → **Domains & Routes**
    - Add a custom domain or note the default `rusty-llm.<subdomain>.workers.dev` URL
 
-7. **Verify deployment:**
+4. **Verify deployment:**
    ```bash
    curl -s "https://rusty-llm.<subdomain>.workers.dev/v1/health" | jq .
    ```
