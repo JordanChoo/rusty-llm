@@ -1,0 +1,5 @@
+# Copy this to .dev.vars and fill in real values
+# These are Cloudflare Worker secrets for local development (wrangler dev)
+CSVKEY=your-agent-authentication-key-here
+DATAFORSEO_LOGIN=your-dataforseo-email@example.com
+DATAFORSEO_PASSWORD=your-dataforseo-api-key-here

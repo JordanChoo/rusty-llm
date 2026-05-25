@@ -1,0 +1,12 @@
+name = "rusty-llm"
+main = "build/worker/shim.mjs"
+compatibility_date = "2026-05-03"
+
+[build]
+command = "curl https://sh.rustup.rs -sSf | sh -s -- -y --default-toolchain stable --profile minimal && . \"$HOME/.cargo/env\" && rustup target add wasm32-unknown-unknown && cargo install worker-build && worker-build --release"
+
+[env.staging]
+name = "rusty-llm-staging"
+
+[env.production]
+name = "rusty-llm"

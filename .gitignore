@@ -1,0 +1,21 @@
+# Secrets (NEVER commit)
+.env
+.dev.vars
+
+# Claude/editor local settings
+.claude/settings.local.json
+
+# Rust build artifacts
+target/
+
+# CF Workers build output
+build/
+node_modules/
+.wrangler/
+
+# bv (beads viewer) local config and caches
+.bv/
+
+# OS junk
+.DS_Store
+Thumbs.db
