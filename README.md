@@ -6,7 +6,7 @@ Rust Cloudflare Worker that proxies DataForSEO's AI Optimization LLM Scraper end
 
 Most agent frameworks want a single tool-like HTTP endpoint, not provider-specific SDK logic scattered across workflows. `rusty-llm` centralizes DataForSEO credentials, normalizes request validation, exposes a stable request/response contract, and makes it easy to compare Gemini and ChatGPT behavior from the same caller.
 
-That makes it useful for:
+You can use it for:
 
 - **Agent tool integration**: LangChain, LangGraph, Deep Agents, or custom orchestration layers can call one endpoint instead of managing provider-specific request shaping
 - **Cross-model comparison**: A single `"both"` request runs Gemini and ChatGPT concurrently and returns a correlated envelope
@@ -17,7 +17,7 @@ That makes it useful for:
 ## Key Features
 
 - **Dual-provider mode**: Query Gemini and ChatGPT concurrently with a single request
-- **Rich response metadata**: Request ID, provider, duration, retry state, and single-provider DFS metadata on successful responses
+- **Response metadata**: Request ID, provider, duration, retry state, and single-provider DFS metadata on successful responses
 - **Request IDs**: UUID v4 generated for every `POST /v1/llm` request and propagated through headers, error bodies, logs, and default DFS tags
 - **Automatic retry**: Single retry on 429/503 from DataForSEO
 - **Input normalization and validation**: Strict field validation with descriptive error codes and keyword sanitization before dispatch
@@ -59,14 +59,14 @@ validate   read secrets
 ```
 
 **Modules:**
-- `errors.rs` — JSON error response builders, UTF-8 safe truncation
-- `providers.rs` — Provider enum, URL constants, per-provider feature flags
-- `validation.rs` — Auth, body parsing, field validation, input sanitization
-- `dataforseo.rs` — HTTP client, retry logic, dual-provider envelope
+- `errors.rs`: JSON error response builders and UTF-8 safe truncation
+- `providers.rs`: Provider enum, URL constants, and per-provider feature flags
+- `validation.rs`: Auth, body parsing, field validation, and input sanitization
+- `dataforseo.rs`: HTTP client, retry logic, and the dual-provider envelope
 
 ### Request Lifecycle
 
-1. `lib.rs` generates a UUID v4 request ID for each `/v1/llm` request.
+1. `lib.rs` generates a UUID v4 request ID for each `POST /v1/llm` request.
 2. `validation.rs` authenticates the `csvkey` query parameter with a constant-time byte comparison.
 3. The request body is read, parsed as JSON, and validated into an `LlmRequest`.
 4. The worker loads `DATAFORSEO_LOGIN` and `DATAFORSEO_PASSWORD` from Cloudflare Worker secrets.
@@ -74,7 +74,7 @@ validate   read secrets
 6. The worker dispatches either one provider request or two concurrent requests with `futures::join!`.
 7. On single-provider success, the upstream JSON body is returned verbatim and enriched with metadata headers.
 8. On dual-provider success or partial failure, the worker assembles a combined envelope with per-provider outcomes.
-9. Single-provider success responses and dual-provider aggregate responses emit a structured JSON log line.
+9. Successful single-provider responses and aggregate dual-provider responses emit a structured JSON log line.
 
 ### Repository Layout
 
@@ -163,12 +163,12 @@ Content-Type: application/json
 
 | Field | Type | Required | Default | Constraints |
 |-------|------|----------|---------|-------------|
-| `provider` | string | yes | — | `"gemini"`, `"chatgpt"`, or `"both"` (case-insensitive) |
-| `keyword` | string | yes | — | 1–2000 chars after sanitization |
-| `location` | int or string | yes | — | Positive integer (DFS code) or non-empty string (location name) |
+| `provider` | string | yes | none | `"gemini"`, `"chatgpt"`, or `"both"` (case-insensitive) |
+| `keyword` | string | yes | none | 1–2000 chars after sanitization |
+| `location` | int or string | yes | none | Positive integer (DFS code) or non-empty string (location name) |
 | `language` | string | no | `"en"` | 2–5 lowercase letters |
 | `force_web_search` | boolean | no | `false` | Only valid for `chatgpt` and `both` |
-| `tag` | string | no | — | Max 255 chars |
+| `tag` | string | no | none | Max 255 chars |
 
 #### Validation and Normalization Rules
 
@@ -199,7 +199,7 @@ curl -X POST "https://<worker-url>/v1/llm?csvkey=<key>" \
 
 #### Upstream Task Mapping
 
-The worker always transforms the inbound request into a DataForSEO task array containing exactly one task object:
+The worker maps each inbound request to a DataForSEO task array containing exactly one task object:
 
 | Inbound field | Upstream field | Notes |
 |---------------|----------------|-------|
@@ -240,14 +240,14 @@ Returns an envelope:
 ```
 
 HTTP status codes for dual mode:
-- `200` — Both providers succeeded
-- `207` — One provider failed (partial success)
-- `502` — Both providers failed
+- `200`: Both providers succeeded
+- `207`: One provider failed and the other succeeded
+- `502`: Both providers failed
 
 #### Dual-Provider Semantics
 
 - Gemini and ChatGPT are dispatched concurrently with `futures::join!`
-- Overall duration is measured around the concurrent section, so it trends toward the slower provider, not the sum of both
+- Overall duration is measured around the concurrent section, so it tracks the slower provider rather than the sum of both
 - Each provider sub-object includes its own status, duration, retry state, and either a `response` object or an error payload
 - The top-level HTTP status reflects the aggregate outcome:
   - `200` when both provider requests succeed
@@ -330,9 +330,9 @@ For `dataforseo_error` upstream failures, the worker also includes `dataforseo_s
 ### Environments
 
 Configured in `wrangler.toml`:
-- **Default (dev)**: `rusty-llm.<subdomain>.workers.dev`
-- **Staging**: `rusty-llm-staging.<subdomain>.workers.dev`
-- **Production**: `rusty-llm.<subdomain>.workers.dev` (custom domain)
+- **Default (dev)**, `rusty-llm.<subdomain>.workers.dev`
+- **Staging**, `rusty-llm-staging.<subdomain>.workers.dev`
+- **Production**, `rusty-llm.<subdomain>.workers.dev` (custom domain)
 
 ### Build And Runtime Model
 
@@ -462,7 +462,7 @@ The E2E harness is organized into these sections:
 - `routing`
 - `observability`
 
-That gives you both contract-level verification and a practical smoke test against a deployed worker.
+This gives you contract-level verification and a practical smoke test against a deployed worker.
 
 ## Deployment
 
@@ -489,7 +489,7 @@ curl -s "https://<worker-url>/v1/health" | jq .
 
 ### Via Cloudflare Dashboard (UI)
 
-The `wrangler deploy` command handles building, uploading, and configuring the worker in one step. If you prefer deploying via the CLI, that's all you need — the steps below are only for configuring secrets and custom domains through the dashboard.
+The `wrangler deploy` command handles building, uploading, and configuring the worker in one step. If you deploy with the CLI, that is enough. The steps below only cover secrets and custom domains in the dashboard.
 
 1. **Deploy via CLI** (handles build + upload + compatibility automatically):
    ```bash
@@ -500,9 +500,9 @@ The `wrangler deploy` command handles building, uploading, and configuring the w
    - Go to [Cloudflare Dashboard](https://dash.cloudflare.com) → **Workers & Pages** → **rusty-llm**
    - Navigate to **Settings** → **Variables and Secrets**
    - Add the following as **Encrypted** secrets:
-     - `CSVKEY` — your chosen authentication token
-     - `DATAFORSEO_LOGIN` — DataForSEO account email
-     - `DATAFORSEO_PASSWORD` — DataForSEO API password
+     - `CSVKEY`: your chosen authentication token
+     - `DATAFORSEO_LOGIN`: DataForSEO account email
+     - `DATAFORSEO_PASSWORD`: DataForSEO API password
 
 3. **Configure custom domain (optional):**
    - Go to **Settings** → **Domains & Routes**
@@ -523,7 +523,7 @@ When deploying through Cloudflare's GitHub integration:
 - Leave **Root directory** empty unless the repository is genuinely nested inside a subdirectory
 - Add secrets after the first deploy under **Settings → Variables and Secrets**
 
-Those settings keep dashboard deploys aligned with the same Rust/WASM packaging path used locally.
+This keeps dashboard deploys on the same Rust and WASM packaging path used locally.
 
 ### Rollback
 
@@ -539,7 +539,7 @@ Via dashboard: **Workers & Pages** → select worker → **Deployments** tab →
 
 ### Request Correlation
 
-For `POST /v1/llm`, the request ID is the backbone of the tracing model:
+For `POST /v1/llm`, the request ID is the main correlation field:
 
 - returned in the `X-RustyLLM-Request-Id` header
 - embedded in JSON error payloads
@@ -563,7 +563,7 @@ Single-provider success responses and dual-provider aggregate responses emit a c
 }
 ```
 
-This is designed to be easy to tail in Wrangler or ingest into downstream logging systems without additional transformation.
+You can tail this in Wrangler or ingest it into downstream logging systems without additional transformation.
 
 ## Design Principles
 
@@ -595,11 +595,11 @@ The upstream retry policy is deliberately narrow:
 - other non-2xx responses fail immediately
 - timeout-like failures return `504 dataforseo_timeout`
 
-This avoids hidden retry storms while still smoothing over the most obvious transient upstream failures.
+This keeps the retry policy narrow while still covering the most obvious transient upstream failures.
 
-### Single-Provider vs Dual-Provider Strategy
+### Single-Provider And Dual-Provider Strategy
 
-- **Single provider** favors fidelity: return the upstream JSON body as-is and add metadata in headers
-- **Dual provider** favors comparison: synthesize a top-level envelope so both provider outcomes can be returned together with one overall HTTP status
+- **Single provider**: return the upstream JSON body as-is and add metadata in headers
+- **Dual provider**: return a top-level envelope so both provider outcomes can be returned together with one overall HTTP status
 
-That split keeps the simple path simple while still offering a first-class comparison mode when the caller needs it.
+The single-provider path stays close to the upstream response. The dual-provider path returns a wrapper built for side-by-side comparison.
