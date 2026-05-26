@@ -540,12 +540,9 @@ mod tests {
             12000,
         );
         assert_eq!(envelope["chatgpt"]["dataforseo_status"], 500);
-        assert!(
-            envelope["chatgpt"]["dataforseo_body"]
-                .as_str()
-                .unwrap()
-                .len()
-                > 0
-        );
+        assert!(!envelope["chatgpt"]["dataforseo_body"]
+            .as_str()
+            .unwrap()
+            .is_empty());
     }
 }

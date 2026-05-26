@@ -133,7 +133,7 @@ mod tests {
         assert_eq!(json["dataforseo_body"], "Forbidden");
         assert_eq!(json["code"], "dataforseo_error");
         assert_eq!(json["request_id"], "req-456");
-        assert!(json["error"].as_str().unwrap().len() > 0);
+        assert!(!json["error"].as_str().unwrap().is_empty());
     }
 
     #[test]
